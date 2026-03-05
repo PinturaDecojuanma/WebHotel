@@ -1,0 +1,2599 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Antigravit Tech | Sistema de Inspección Eléctrica 3D</title>
+    <meta name="description" content="Plataforma avanzada de inspección de cuadros eléctricos en 3D con tecnología Antigravit. Informes técnicos detallados y visualización premium.">
+    
+    <!-- Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/vanilla-tilt/1.8.0/vanilla-tilt.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/idb@8.0.0/dist/iife.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.0/dist/signature_pad.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@recogito/recogito-js@0.9.0/dist/recogito.min.js"></script>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg: #020617;
+            --surface: rgba(15, 23, 42, 0.4);
+            --card-border: rgba(255, 255, 255, 0.08);
+            --text-main: #f8fafc;
+            --text-dim: #94a3b8;
+            --primary: #38bdf8;
+            --primary-glow: rgba(56, 189, 248, 0.3);
+            --accent: #818cf8;
+            --accent-glow: rgba(129, 140, 248, 0.3);
+            --danger: #ef4444;
+            --success: #10b981;
+            --glass: rgba(255, 255, 255, 0.02);
+            --nav-bg: rgba(2, 6, 23, 0.8);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg);
+            color: var(--text-main);
+            min-height: 100vh;
+            overflow-x: hidden;
+            background-image: 
+                radial-gradient(circle at 20% 20%, rgba(56, 189, 248, 0.1) 0%, transparent 40%),
+                radial-gradient(circle at 80% 80%, rgba(129, 140, 248, 0.1) 0%, transparent 40%),
+                radial-gradient(circle at 50% 50%, rgba(15, 23, 42, 1) 0%, var(--bg) 100%);
+            background-attachment: fixed;
+        }
+
+        /* Animated Background Elements */
+        .bg-glow {
+            position: fixed;
+            width: 60vw;
+            height: 60vw;
+            background: radial-gradient(circle, var(--primary-glow) 0%, transparent 70%);
+            border-radius: 50%;
+            filter: blur(80px);
+            z-index: -1;
+            opacity: 0.3;
+            pointer-events: none;
+            animation: move 20s infinite alternate ease-in-out;
+        }
+
+        @keyframes move {
+            from { transform: translate(-10%, -10%); }
+            to { transform: translate(20%, 20%); }
+        }
+
+        /* Grid Background Overlay */
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 60px 60px;
+            pointer-events: none;
+            z-index: -1;
+            mask-image: radial-gradient(circle at center, black, transparent 90%);
+        }
+
+        /* Noise Overlay for Texture */
+        body::after {
+            content: "";
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: url("https://grainy-gradients.vercel.app/noise.svg");
+            opacity: 0.05;
+            pointer-events: none;
+            z-index: 1000;
+            filter: contrast(150%) brightness(100%);
+        }
+
+        header {
+            padding: 5rem 2rem 3rem;
+            text-align: center;
+            position: relative;
+        }
+
+        .logo-container {
+            display: inline-block;
+            margin-bottom: 1rem;
+            animation: float 6s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-20px); }
+        }
+
+        h1 {
+            font-size: clamp(2.5rem, 8vw, 5rem);
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: -3px;
+            line-height: 0.9;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, #fff 40%, var(--primary) 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 0 30px var(--primary-glow));
+        }
+
+        .subtitle {
+            font-size: 0.9rem;
+            color: var(--text-dim);
+            max-width: 600px;
+            margin: 0 auto;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            font-weight: 600;
+            opacity: 0.8;
+            background: linear-gradient(90deg, transparent, var(--text-dim), transparent);
+            -webkit-background-clip: text;
+            background-clip: text;
+        }
+
+        .controls {
+            max-width: 900px;
+            margin: 0 auto 4rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1.5rem;
+            justify-content: center;
+            padding: 0 2rem;
+            z-index: 10;
+            position: relative;
+        }
+
+        .search-wrapper {
+            position: relative;
+            flex: 1;
+            min-width: 300px;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 1.2rem 2.5rem;
+            background: var(--surface);
+            border: 1px solid var(--card-border);
+            border-radius: 100px;
+            color: white;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+            backdrop-filter: blur(20px);
+            transition: all 0.5s cubic-bezier(0.23, 1, 0.32, 1);
+            outline: none;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.2);
+        }
+
+        input[type="text"]:focus {
+            border-color: var(--primary);
+            box-shadow: 
+                0 0 40px var(--primary-glow),
+                inset 0 0 10px rgba(56, 189, 248, 0.1);
+            transform: translateY(-2px);
+            background: rgba(15, 23, 42, 0.8);
+        }
+
+        #clearSearch { opacity: 0.6; }
+        #clearSearch:hover { opacity: 1; color: var(--danger); }
+        #clearSearch.visible { opacity: 0.7; }
+
+        .btn {
+            padding: 1rem 2.5rem;
+            border-radius: 100px;
+            border: 1px solid rgba(255,255,255,0.1);
+            cursor: pointer;
+            font-weight: 700;
+            font-family: inherit;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            position: relative;
+            overflow: hidden;
+            font-size: 0.85rem;
+        }
+
+        .btn::after {
+            content: "";
+            position: absolute;
+            top: -50%; left: -50%;
+            width: 200%; height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(255,255,255,0.1), transparent);
+            transform: rotate(45deg);
+            transition: 0.6s;
+            pointer-events: none;
+        }
+
+        .btn:hover::after {
+            left: 100%;
+        }
+
+        .btn-pdf {
+            background: linear-gradient(135deg, var(--danger), #b91c1c);
+            color: white;
+            box-shadow: 0 10px 20px rgba(239, 68, 68, 0.3);
+        }
+
+        .btn-pdf:hover {
+            transform: translateY(-5px) scale(1.05);
+            box-shadow: 0 15px 30px rgba(239, 68, 68, 0.5);
+        }
+
+        .btn-add {
+            background: linear-gradient(135deg, var(--success), #059669);
+            color: white;
+            box-shadow: 0 10px 20px rgba(16, 185, 129, 0.3);
+        }
+
+        .btn-add:hover {
+            transform: translateY(-5px) scale(1.05);
+            box-shadow: 0 15px 30px rgba(16, 185, 129, 0.5);
+        }
+
+        .btn-pdf:active {
+            transform: translateY(0);
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: auto;
+            padding: 0 2rem 6rem;
+        }
+
+        #gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 3rem;
+            perspective: 2000px;
+        }
+
+        .card {
+            background: var(--surface);
+            border-radius: 28px;
+            border: 1px solid var(--card-border);
+            backdrop-filter: blur(30px);
+            transform-style: preserve-3d;
+            will-change: transform;
+            transition: box-shadow 0.4s ease, border-color 0.4s ease;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(255,255,255,0.05), transparent);
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .card:hover {
+            box-shadow: 0 40px 80px rgba(0, 0, 0, 0.6);
+            border-color: rgba(56, 189, 248, 0.3);
+        }
+
+        .image-container {
+            position: relative;
+            width: 100%;
+            height: 280px;
+            border-radius: 24px 24px 0 0;
+            overflow: hidden;
+            transform: translateZ(30px);
+            margin: 8px 8px 0;
+            width: calc(100% - 16px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        .image-container::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(to bottom, transparent 60%, rgba(15, 23, 42, 0.8));
+            pointer-events: none;
+        }
+
+        .card img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.8s cubic-bezier(0.23, 1, 0.32, 1);
+        }
+
+        .card:hover img {
+            transform: scale(1.1) rotate(1deg);
+        }
+
+        .card-body {
+            padding: 2.5rem 1.8rem 1.8rem;
+            transform: translateZ(50px);
+            background: transparent;
+            flex-grow: 1;
+        }
+
+        .card-body h3 {
+            margin: 0 0 0.8rem;
+            color: #fff;
+            font-size: 1.5rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: -0.5px;
+            background: linear-gradient(90deg, #fff, var(--primary));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .card-body p {
+            font-size: 0.95rem;
+            color: var(--text-dim);
+            line-height: 1.6;
+        }
+
+        .card-footer {
+            margin-top: 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--primary);
+            opacity: 0.7;
+        }
+
+        .card-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .card-action-btn {
+            flex: 1;
+            padding: 0.6rem;
+            border-radius: 10px;
+            border: 1px solid var(--card-border);
+            background: rgba(255,255,255,0.03);
+            color: var(--text-dim);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.4rem;
+            font-size: 0.7rem;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+
+        .card-action-btn:hover {
+            background: rgba(56, 189, 248, 0.15);
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+
+        .card-action-btn.has-audio, .card-action-btn.has-video {
+            border-color: var(--success);
+            color: var(--success);
+            background: rgba(16, 185, 129, 0.1);
+        }
+
+        .card-action-btn svg {
+            width: 14px;
+            height: 14px;
+        }
+
+        /* Entrance Animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .card {
+            animation: fadeInUp 0.8s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+            opacity: 0;
+        }
+
+        /* Loading Overlay */
+        #loader {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--bg);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            transition: opacity 1s ease;
+        }
+
+        .spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid var(--glass);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* PDF Template Styles */
+        #pdf-template {
+            position: fixed;
+            left: -9999px;
+            width: 800px;
+            background: #ffffff;
+            color: #0f172a;
+            padding: 40px;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        .pdf-header {
+            border-bottom: 2px solid #0f172a;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .pdf-card {
+            margin-bottom: 30px;
+            page-break-inside: avoid;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            overflow: hidden;
+            display: flex;
+            gap: 20px;
+        }
+
+        .pdf-img {
+            width: 250px;
+            height: 200px;
+            object-fit: cover;
+        }
+
+        .pdf-info {
+            padding: 20px;
+            flex: 1;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            h1 { font-size: 3rem; }
+            .controls { flex-direction: column; }
+            .search-wrapper { min-width: 100%; }
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 10px; }
+        ::-webkit-scrollbar-track { background: var(--bg); }
+        ::-webkit-scrollbar-thumb {
+            background: var(--surface);
+            border-radius: 5px;
+            border: 2px solid var(--bg);
+        }
+        ::-webkit-scrollbar-thumb:hover { background: var(--primary); }
+
+        /* Modal System */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(2, 6, 23, 0.95);
+            backdrop-filter: blur(20px);
+            z-index: 10000;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+            opacity: 0;
+            transition: opacity 0.4s ease;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+            opacity: 1;
+        }
+
+        .modal-overlay#addModal .modal-content {
+            animation: slideUp 0.4s ease;
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(30px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        #imageDropZone:hover {
+            border-color: var(--primary);
+            background: rgba(56, 189, 248, 0.05);
+        }
+
+        #imageDropZone.dragover {
+            border-color: var(--primary);
+            background: rgba(56, 189, 248, 0.1);
+        }
+
+        #imageDropZone.has-image {
+            padding: 1rem;
+        }
+
+        .modal-overlay.active .modal-content {
+            transform: scale(1) translateY(0);
+        }
+
+        .modal-media {
+            background: linear-gradient(180deg, #1a1a2e 0%, #0f0f1a 100%);
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            height: 400px;
+            min-height: 300px;
+        }
+
+        .modal-media > div {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            width: 100% !important;
+            height: 100% !important;
+        }
+
+        .modal-media img {
+            display: block !important;
+            max-width: 90% !important;
+            max-height: 90% !important;
+            width: auto !important;
+            height: auto !important;
+            object-fit: contain !important;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+        }
+
+        .modal-media video {
+            max-width: 90%;
+            max-height: 90%;
+            object-fit: contain;
+            border-radius: 12px;
+        }
+
+        .modal-details {
+            padding: 2rem 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.2rem;
+            overflow-y: auto;
+            border-left: 1px solid var(--card-border);
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.8), rgba(2, 6, 23, 0.9));
+        }
+
+        .detail-header h2 {
+            font-size: 2rem;
+            font-weight: 800;
+            margin-bottom: 0.5rem;
+            color: #fff;
+        }
+
+        .notes-area {
+            flex: 1;
+        }
+
+        .notes-area label {
+            display: block;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--primary);
+            margin-bottom: 1rem;
+            font-weight: 700;
+        }
+
+        .notes-area textarea {
+            width: 100%;
+            height: 150px;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: 1.2rem;
+            color: #fff;
+            font-family: inherit;
+            resize: none;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        .notes-area textarea:focus {
+            border-color: var(--primary);
+        }
+
+        .media-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .action-group {
+            background: linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02));
+            padding: 1.8rem;
+            border-radius: 20px;
+            border: 1px solid var(--card-border);
+            transition: all 0.3s ease;
+        }
+
+        .action-group:hover {
+            border-color: var(--primary);
+            background: linear-gradient(135deg, rgba(56, 189, 248, 0.1), rgba(129, 140, 248, 0.05));
+            box-shadow: 0 0 20px rgba(56, 189, 248, 0.1);
+        }
+
+        .action-group h4 {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            color: var(--text-dim);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .audio-recorder {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .record-btn {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--danger), #ff6b6b);
+            border: 2px solid var(--danger);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            transition: transform 0.3s, box-shadow 0.3s;
+            font-size: 24px;
+            box-shadow: 0 0 20px rgba(239, 68, 68, 0.3);
+        }
+
+        .record-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 30px rgba(239, 68, 68, 0.6);
+        }
+
+        .record-btn.recording {
+            animation: pulse 1s infinite;
+            background: #ff0000;
+            box-shadow: 0 0 40px rgba(255, 0, 0, 0.8);
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            70% { transform: scale(1.1); box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); }
+            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+            width: 100%;
+        }
+
+        .file-input-wrapper input[type="file"] {
+            position: absolute;
+            left: 0; top: 0; opacity: 0;
+            cursor: pointer;
+        }
+
+        .close-modal {
+            position: absolute;
+            top: 2rem;
+            right: 2rem;
+            background: rgba(255,255,255,0.1);
+            border: none;
+            color: white;
+            padding: 1rem;
+            border-radius: 50%;
+            cursor: pointer;
+            z-index: 10001;
+            transition: all 0.3s;
+        }
+
+        .close-modal:hover {
+            background: var(--danger);
+            transform: rotate(90deg);
+        }
+
+        @media (max-width: 1024px) {
+            .modal-content {
+                grid-template-columns: 1fr;
+                max-height: 95vh;
+                overflow-y: auto;
+            }
+            .modal-media { 
+                height: 300px !important;
+                min-height: 250px;
+            }
+            .modal-media img, .modal-media video {
+                max-width: 90% !important;
+                max-height: 90% !important;
+            }
+            .modal-details { 
+                border-left: none; 
+                border-top: 1px solid var(--card-border); 
+                padding: 1rem;
+            }
+            .detail-header h2 {
+                font-size: 1.3rem;
+            }
+            .notes-area textarea {
+                height: 100px;
+            }
+            .action-group {
+                padding: 1rem;
+            }
+            .media-actions {
+                gap: 0.5rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .modal-content {
+                border-radius: 16px;
+                margin: 0.5rem;
+            }
+            .modal-media {
+                height: 220px !important;
+                min-height: 180px;
+            }
+            .modal-media img, .modal-media video {
+                max-width: 95% !important;
+                max-height: 95% !important;
+                border-radius: 8px;
+            }
+            .modal-details {
+                padding: 0.8rem;
+                gap: 0.8rem;
+            }
+            .detail-header h2 {
+                font-size: 1.1rem;
+            }
+            .btn {
+                padding: 0.8rem 1.5rem;
+                font-size: 0.75rem;
+            }
+            .record-btn {
+                width: 50px;
+                height: 50px;
+            }
+            .action-group {
+                padding: 0.8rem;
+            }
+            .action-group h4 {
+                font-size: 0.65rem;
+                margin-bottom: 0.5rem;
+            }
+        }
+        .camera-preview-container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            background: #000;
+            display: none;
+        }
+
+        .camera-preview-container.active {
+            display: block;
+        }
+
+        #cameraPreview {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transform: scaleX(-1);
+        }
+
+        .camera-controls {
+            position: absolute;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 1.5rem;
+            z-index: 20;
+        }
+
+        .capture-btn {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: 3px solid white;
+            background: transparent;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            transition: all 0.3s;
+        }
+
+        .capture-btn:hover {
+            transform: scale(1.1);
+            background: rgba(255,255,255,0.2);
+        }
+
+        .capture-btn.record-video-live.recording {
+            border-color: var(--danger);
+            background: var(--danger);
+            animation: pulse 1s infinite;
+        }
+
+        .camera-back-btn {
+            position: absolute;
+            top: 1.5rem;
+            left: 1.5rem;
+            background: rgba(0,0,0,0.5);
+            border: 1px solid var(--card-border);
+            padding: 0.5rem 1rem;
+            border-radius: 100px;
+            color: white;
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+            z-index: 30;
+        }
+
+        /* Responsive capture icons */
+        .capture-btn svg { width: 24px; height: 24px; }
+        
+        /* Hierarchy Tree */
+        .hierarchy-container {
+            max-width: 1400px;
+            margin: 0 auto 3rem;
+            padding: 2rem;
+        }
+        
+        .hierarchy-tree {
+            background: var(--surface);
+            border-radius: 20px;
+            border: 1px solid var(--card-border);
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .hierarchy-tree h3 {
+            color: var(--primary);
+            font-size: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--card-border);
+        }
+        
+        .hierarchy-tree ul {
+            list-style: none;
+            padding-left: 1.5rem;
+        }
+        
+        .hierarchy-tree li {
+            padding: 0.5rem 0;
+            cursor: pointer;
+            transition: all 0.2s;
+            border-left: 2px solid var(--card-border);
+            padding-left: 1rem;
+            margin: 0.3rem 0;
+        }
+        
+        .hierarchy-tree li:hover {
+            border-left-color: var(--primary);
+            color: var(--primary);
+        }
+        
+        .hierarchy-tree li strong {
+            color: var(--text-main);
+        }
+        
+        .hierarchy-tree li small {
+            color: var(--text-dim);
+            font-size: 0.75rem;
+            margin-left: 0.5rem;
+        }
+        
+        .status-OPTIMAL { color: var(--success); }
+        .status-WARNING { color: #f59e0b; }
+        .status-CRITICAL { color: var(--danger); }
+        
+        /* Checklist Styles */
+        .checklist-container {
+            background: rgba(0,0,0,0.2);
+            border-radius: 12px;
+            padding: 1rem;
+            margin: 1rem 0;
+        }
+        
+        .checklist-item {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            padding: 0.6rem 0;
+            border-bottom: 1px solid var(--card-border);
+        }
+        
+        .checklist-item:last-child {
+            border-bottom: none;
+        }
+        
+        .checklist-item input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: var(--primary);
+        }
+        
+        .checklist-item label {
+            flex: 1;
+            font-size: 0.85rem;
+            color: var(--text-main);
+        }
+        
+        .checklist-item select {
+            background: var(--surface);
+            border: 1px solid var(--card-border);
+            color: var(--text-main);
+            padding: 0.3rem 0.5rem;
+            border-radius: 6px;
+            font-size: 0.75rem;
+        }
+        
+        /* Signature */
+        .signature-container {
+            margin: 1rem 0;
+        }
+        
+        .signature-container h4 {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            color: var(--primary);
+            margin-bottom: 0.5rem;
+        }
+        
+        #signatureCanvas {
+            background: #fff;
+            border-radius: 8px;
+            width: 100%;
+            height: 120px;
+        }
+        
+        .signature-buttons {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+        
+        .signature-buttons button {
+            padding: 0.4rem 1rem;
+            border-radius: 6px;
+            border: 1px solid var(--card-border);
+            background: var(--surface);
+            color: var(--text-dim);
+            cursor: pointer;
+            font-size: 0.75rem;
+            transition: all 0.2s;
+        }
+        
+        .signature-buttons button:hover {
+            background: var(--primary);
+            color: white;
+        }
+        
+        /* QR Code */
+        .qr-container {
+            text-align: center;
+            padding: 1rem;
+            background: #fff;
+            border-radius: 12px;
+            margin: 1rem 0;
+        }
+        
+        .qr-container h4 {
+            color: #000;
+            font-size: 0.75rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        /* Login Modal */
+        .login-modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(2, 6, 23, 0.95);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 20000;
+        }
+        
+        .login-modal.hidden {
+            display: none;
+        }
+        
+        .login-box {
+            background: var(--surface);
+            border: 1px solid var(--card-border);
+            border-radius: 24px;
+            padding: 3rem;
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+        
+        .login-box h2 {
+            color: var(--primary);
+            margin-bottom: 2rem;
+            font-size: 1.5rem;
+        }
+        
+        .login-box input, .login-box select {
+            width: 100%;
+            padding: 1rem;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            color: white;
+            margin-bottom: 1rem;
+            font-family: inherit;
+        }
+        
+        .login-box input:focus, .login-box select:focus {
+            border-color: var(--primary);
+            outline: none;
+        }
+        
+        .login-box button {
+            width: 100%;
+            padding: 1rem;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            border: none;
+            border-radius: 12px;
+            color: white;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .login-box button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(56, 189, 248, 0.3);
+        }
+        
+        /* User Badge */
+        .user-badge {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            background: var(--surface);
+            border: 1px solid var(--card-border);
+            padding: 0.5rem 1rem;
+            border-radius: 100px;
+            font-size: 0.8rem;
+            color: var(--text-dim);
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .user-badge .logout-btn {
+            background: none;
+            border: none;
+            color: var(--danger);
+            cursor: pointer;
+            font-size: 0.75rem;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+        
+        .user-badge .logout-btn:hover {
+            background: rgba(239, 68, 68, 0.2);
+        }
+        
+        /* Status Select container */
+        .status-select-container {
+            margin: 1rem 0;
+        }
+        
+        .status-select-container label {
+            display: block;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            color: var(--primary);
+            margin-bottom: 0.5rem;
+        }
+
+        #statusSelect {
+            width: 100%;
+            padding: 0.8rem;
+            background: var(--surface);
+            border: 1px solid var(--card-border);
+            border-radius: 10px;
+            color: white;
+            font-family: inherit;
+        }
+
+        /* Stats Dashboard */
+        .stats-dashboard {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1.5rem;
+            max-width: 1200px;
+            margin: 0 auto 3rem;
+            padding: 0 2rem;
+        }
+
+        .stat-card {
+            background: var(--surface);
+            border: 1px solid var(--card-border);
+            padding: 1.5rem;
+            border-radius: 24px;
+            text-align: center;
+            backdrop-filter: blur(20px);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--primary);
+            background: rgba(15, 23, 42, 0.6);
+        }
+
+        .stat-value {
+            display: block;
+            font-size: 2.2rem;
+            font-weight: 800;
+            color: var(--text-main);
+            line-height: 1;
+            margin-bottom: 0.4rem;
+        }
+
+        .stat-label {
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 2.5px;
+            color: var(--text-dim);
+            font-weight: 600;
+        }
+
+        .stat-card.optimal .stat-value { color: var(--success); text-shadow: 0 0 20px rgba(16, 185, 129, 0.3); }
+        .stat-card.warning .stat-value { color: #f59e0b; text-shadow: 0 0 20px rgba(245, 158, 11, 0.3); }
+        .stat-card.critical .stat-value { color: var(--danger); text-shadow: 0 0 20px rgba(239, 68, 68, 0.3); }
+
+        .main-actions {
+            display: flex;
+            gap: 1rem;
+        }
+    </style>
+</head>
+<body>
+
+<div class="bg-glow" style="top: -10%; left: -10%;"></div>
+<div class="bg-glow" style="bottom: -10%; right: -10%; animation-delay: -5s; background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);"></div>
+
+<div id="loader">
+    <div class="spinner"></div>
+</div>
+
+<!-- Login Modal -->
+<div id="loginModal" class="login-modal">
+    <div class="login-box">
+        <h2>Antigravit Tech</h2>
+        <p style="color: var(--text-dim); margin-bottom: 1.5rem; font-size: 0.9rem;">Sistema de Inspección Eléctrica</p>
+        <input type="text" id="username" placeholder="Nombre del inspector">
+        <select id="role">
+            <option value="inspector">Inspector</option>
+            <option value="admin">Administrador</option>
+            <option value="supervisor">Supervisor</option>
+        </select>
+        <button id="loginBtn">Iniciar Sesión</button>
+    </div>
+</div>
+
+<!-- User Badge -->
+<div id="userBadge" class="user-badge" style="display: none;">
+    <span id="userName"></span>
+    <button class="logout-btn" id="logoutBtn">Salir</button>
+</div>
+
+<header>
+    <div class="logo-container">
+        <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary); filter: drop-shadow(0 0 10px var(--primary-glow));">
+            <polyline points="16 18 22 12 16 6"></polyline>
+            <polyline points="8 6 2 12 8 18"></polyline>
+        </svg>
+    </div>
+    <h1>Antigravit Tech</h1>
+    <p class="subtitle">Next-Gen Electrical Intelligence & 3D Analytics</p>
+</header>
+
+<div class="stats-dashboard" id="statsDashboard">
+    <div class="stat-card">
+        <span class="stat-value" id="statTotal">0</span>
+        <span class="stat-label">COMPONENTES</span>
+    </div>
+    <div class="stat-card optimal">
+        <span class="stat-value" id="statOptimal">0</span>
+        <span class="stat-label">OPTIMAL</span>
+    </div>
+    <div class="stat-card warning">
+        <span class="stat-value" id="statWarning">0</span>
+        <span class="stat-label">WARNING</span>
+    </div>
+    <div class="stat-card critical">
+        <span class="stat-value" id="statCritical">0</span>
+        <span class="stat-label">CRITICAL</span>
+    </div>
+</div>
+
+<div class="controls">
+    <div class="search-wrapper">
+        <svg style="position: absolute; left: 1.5rem; top: 50%; transform: translateY(-50%); color: var(--text-dim); opacity: 0.5; pointer-events: none;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <input type="text" id="searchInput" placeholder="Search components, IDs, or technical specs..." style="padding-left: 3.5rem; padding-right: 3rem;">
+        <button id="clearSearch" aria-label="Limpiar búsqueda" style="position: absolute; right: 1rem; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-dim); cursor: pointer; opacity: 0; transition: opacity 0.3s; padding: 0.5rem;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+    </div>
+    <div class="main-actions">
+        <button class="btn btn-pdf" id="pdfBtn" aria-label="Exportar informe PDF">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+            Export PDF Report
+        </button>
+        <button class="btn" id="addBtn" style="background: linear-gradient(135deg, var(--success), #059669);">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            Añadir
+        </button>
+    </div>
+</div>
+
+<div class="container" style="margin-top: 2rem;">
+    <div class="hierarchy-tree" id="hierarchyTree">
+        <h3>Estructura de Activos</h3>
+    </div>
+    <main id="gallery"></main>
+</div>
+
+<!-- Technical Detail Modal -->
+<div id="detailModal" class="modal-overlay">
+    <button class="close-modal" id="closeModal" aria-label="Cerrar modal">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+    </button>
+    <div class="modal-content">
+        <div class="modal-media" id="modalMedia">
+            <!-- Media will be injected here -->
+            <div id="cameraPreviewContainer" class="camera-preview-container">
+                <video id="cameraPreview" autoplay playsinline muted></video>
+                <button class="camera-back-btn" id="stopCameraBtn">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5"></path><polyline points="12 19 5 12 12 5"></polyline></svg>
+                    Volver
+                </button>
+                <div class="camera-controls">
+                    <button class="capture-btn" id="takePhotoBtn" title="Take Tech Photo">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+                    </button>
+                    <button class="capture-btn record-video-live" id="recordVideoBtnModal" title="Record Assembly Video">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" fill="currentColor"><circle cx="12" cy="12" r="6"></circle></svg>
+                    </button>
+                </div>
+            </div>
+            <canvas id="photoCanvas" style="display:none;"></canvas>
+        </div>
+        <div class="modal-details">
+            <div class="detail-header">
+                <div id="modalStatusBadge"></div>
+                <h2 id="modalTitle">Component Detail</h2>
+                <p id="modalId" style="font-family: 'JetBrains Mono', monospace; color: var(--primary); font-size: 0.8rem;"></p>
+            </div>
+
+            <div class="status-select-container">
+                <label>Estado del Sistema</label>
+                <select id="statusSelect">
+                    <option value="OPTIMAL">OPTIMAL</option>
+                    <option value="WARNING">WARNING</option>
+                    <option value="CRITICAL">CRITICAL</option>
+                </select>
+            </div>
+
+            <div class="notes-area">
+                <label>Technical Annotations</label>
+                <textarea id="modalNotes" placeholder="Enter extended technical observations, assembly steps, or maintenance requirements..."></textarea>
+            </div>
+
+            <div class="checklist-container">
+                <h4 style="font-size: 0.75rem; text-transform: uppercase; color: var(--primary); margin-bottom: 0.8rem;">Checklist de Inspección</h4>
+                <div id="checklistItems"></div>
+            </div>
+
+            <div class="signature-container">
+                <h4>Firma del Inspector</h4>
+                <canvas id="signatureCanvas"></canvas>
+                <div class="signature-buttons">
+                    <button id="saveSignature">Guardar Firma</button>
+                    <button id="clearSignature">Limpiar</button>
+                </div>
+            </div>
+
+            <div class="qr-container">
+                <h4>Código QR</h4>
+                <div id="qrCanvas"></div>
+            </div>
+
+            <div class="media-actions">
+                <div class="action-group">
+                    <h4>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+                        Grabar Audio
+                    </h4>
+                    <div class="audio-recorder" style="justify-content: center; flex-direction: column; gap: 1rem;">
+                        <button id="recordBtn" class="record-btn" title="Pulsa para grabar tu voz" style="width: 60px; height: 60px; box-shadow: 0 0 20px rgba(239, 68, 68, 0.3);">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" fill="currentColor"><circle cx="12" cy="12" r="6"></circle></svg>
+                        </button>
+                        <div id="audioPreviewArea" style="text-align: center; width: 100%;"></div>
+                    </div>
+                </div>
+
+                <div class="action-group">
+                    <h4>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="3"></circle></svg>
+                        Capturar desde Cámara
+                    </h4>
+                    <button class="btn" id="startCameraBtn" style="width: 100%; background: linear-gradient(135deg, var(--accent), #4f46e5);">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+                        Activar Cámara
+                    </button>
+                </div>
+
+                <div class="action-group">
+                    <h4>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"></polygon><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>
+                        Grabar Vídeo
+                    </h4>
+                    <div style="display: flex; justify-content: center; flex-direction: column; gap: 1rem; align-items: center;">
+                        <button class="record-btn record-video-live" id="recordVideoBtnAction" title="Pulsa para grabar vídeo" style="width: 60px; height: 60px; box-shadow: 0 0 20px rgba(239, 68, 68, 0.3);">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" fill="currentColor"><circle cx="12" cy="12" r="6"></circle></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="action-group">
+                    <h4>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"></polygon><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>
+                        Subir Vídeo
+                    </h4>
+                    <div class="file-input-wrapper">
+                        <button class="btn" style="width: 100%; background: var(--glass); border-color: var(--card-border);">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                            Seleccionar Vídeo
+                        </button>
+                        <input type="file" id="videoInput" accept="video/*">
+                    </div>
+                </div>
+            </div>
+
+            <button class="btn btn-pdf" id="saveDetailsBtn" style="width: 100%; justify-content: center; background: linear-gradient(135deg, var(--primary), var(--accent));">
+                💾 Sync Technical Data
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal for Adding New Component -->
+<div id="addModal" class="modal-overlay">
+    <button class="close-modal" id="closeAddModal" aria-label="Cerrar">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+    </button>
+    <div class="modal-content" style="max-width: 500px; grid-template-columns: 1fr; padding: 2rem;">
+        <div style="text-align: center;">
+            <h2 style="color: #fff; margin-bottom: 1.5rem; font-size: 1.5rem;">Nuevo Componente</h2>
+            
+            <div id="imageDropZone" style="border: 2px dashed var(--card-border); border-radius: 16px; padding: 2rem; cursor: pointer; transition: all 0.3s; margin-bottom: 1.5rem; background: rgba(255,255,255,0.02);">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="1.5" style="margin: 0 auto 1rem; display: block; opacity: 0.7;"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                <p style="color: var(--text-dim); font-size: 0.9rem;">Haz clic o arrastra una imagen</p>
+                <input type="file" id="newImageInput" accept="image/*" style="display: none;">
+                <img id="newImagePreview" style="max-width: 100%; max-height: 200px; border-radius: 8px; margin-top: 1rem; display: none;">
+            </div>
+            
+            <input type="text" id="newComponentTitle" placeholder="Título del componente" style="width: 100%; padding: 1rem; background: var(--surface); border: 1px solid var(--card-border); border-radius: 12px; color: white; margin-bottom: 1rem; font-family: inherit;">
+            
+            <textarea id="newComponentDesc" placeholder="Descripción técnica" style="width: 100%; padding: 1rem; background: var(--surface); border: 1px solid var(--card-border); border-radius: 12px; color: white; margin-bottom: 1rem; font-family: inherit; min-height: 80px; resize: vertical;"></textarea>
+            
+            <button class="btn" id="saveNewComponentBtn" style="width: 100%; justify-content: center; background: linear-gradient(135deg, var(--success), #059669);">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                Guardar Componente
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Special Template for PDF generation -->
+<div id="pdf-template"></div>
+
+<script>
+/**
+ * Advanced Tech Photo Class
+ */
+class TechnicalComponent {
+    constructor(id, file, title, description, timestamp, status = 'OPTIMAL') {
+        this.id = id;
+        this.file = file;
+        this.title = title;
+        this.description = description;
+        this.timestamp = timestamp;
+        this.status = status;
+        
+        // Extended attributes (persisted)
+        const savedData = JSON.parse(localStorage.getItem(`tech_${this.id}`) || '{}');
+        this.notes = savedData.notes || '';
+        this.audioUrl = savedData.audioUrl || null;
+        this.videoUrl = savedData.videoUrl || null;
+    }
+
+    save() {
+        localStorage.setItem(`tech_${this.id}`, JSON.stringify({
+            notes: this.escapeHtml(this.notes),
+            audioUrl: this.audioUrl,
+            videoUrl: this.videoUrl
+        }));
+    }
+
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    render(index = 0) {
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.style.animationDelay = `${index * 0.1}s`;
+        card.setAttribute('data-tilt', '');
+        card.setAttribute('data-tilt-max', '12');
+        card.setAttribute('data-tilt-speed', '1000');
+        card.setAttribute('data-tilt-glare', 'true');
+        card.setAttribute('data-tilt-max-glare', '0.2');
+        card.setAttribute('data-tilt-perspective', '1000');
+
+        card.innerHTML = `
+            <div class="image-container">
+                <img src="${this.file}" alt="${this.title}" loading="lazy">
+            </div>
+            <div class="card-body">
+                <div class="status-badge" style="display: flex; align-items: center; gap: 6px; color: ${this.status === 'OPTIMAL' ? 'var(--success)' : 'var(--danger)'}; font-size: 0.65rem; font-weight: 800; margin-bottom: 0.8rem; letter-spacing: 2px;">
+                    <span style="display: block; width: 6px; height: 6px; border-radius: 50%; background: currentColor; box-shadow: 0 0 10px currentColor;"></span>
+                    ${this.status}
+                </div>
+                <h3>${this.escapeHtml(this.title)}</h3>
+                <p>${this.escapeHtml(this.description)}</p>
+                <div class="card-actions">
+                    <button class="card-action-btn ${this.audioUrl ? 'has-audio' : ''}" data-action="audio" title="Grabar/Reproducir Audio">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line></svg>
+                        ${this.audioUrl ? 'Audio' : 'Audio'}
+                    </button>
+                    <button class="card-action-btn ${this.videoUrl ? 'has-video' : ''}" data-action="video" title="Grabar/Ver Video">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"></polygon><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>
+                        ${this.videoUrl ? 'Video' : 'Video'}
+                    </button>
+                </div>
+                <div class="card-footer">
+                    <span style="border: 1px solid var(--card-border); padding: 2px 8px; border-radius: 4px;">ID: ${this.id}</span>
+                    <span>${this.timestamp}</span>
+                </div>
+            </div>
+        `;
+        
+        card.querySelectorAll('.card-action-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const action = btn.dataset.action;
+                if (action === 'audio') {
+                    window.app.toggleAudioFromCard(this);
+                } else if (action === 'video') {
+                    window.app.toggleVideoFromCard(this);
+                }
+            });
+        });
+        
+        card.addEventListener('click', () => {
+            window.app.openDetail(this);
+        });
+
+        return card;
+    }
+}
+
+/**
+ * Main Application Controller
+ */
+class AntigravitApp {
+    constructor() {
+        window.app = this;
+        this.gallery = document.getElementById('gallery');
+        this.searchInput = document.getElementById('searchInput');
+        this.pdfBtn = document.getElementById('pdfBtn');
+        this.loader = document.getElementById('loader');
+        this.clearSearchBtn = document.getElementById('clearSearch');
+        
+        // IndexedDB
+        this.db = null;
+        
+        // Modal elements
+        this.modal = document.getElementById('detailModal');
+        this.closeModalBtn = document.getElementById('closeModal');
+        this.modalMedia = document.getElementById('modalMedia');
+        this.modalTitle = document.getElementById('modalTitle');
+        this.modalId = document.getElementById('modalId');
+        this.modalNotes = document.getElementById('modalNotes');
+        this.modalStatusBadge = document.getElementById('modalStatusBadge');
+        this.recordBtn = document.getElementById('recordBtn');
+        this.videoInput = document.getElementById('videoInput');
+        this.saveDetailsBtn = document.getElementById('saveDetailsBtn');
+        this.audioPreviewArea = document.getElementById('audioPreviewArea');
+        
+        this.currentComponent = null;
+        this.mediaRecorder = null;
+        this.audioChunks = [];
+        
+        // Camera handling
+        this.videoRecorder = null;
+        this.videoChunks = [];
+        this.activeStream = null;
+        
+        // UI Cache
+        this.cameraContainer = document.getElementById('cameraPreviewContainer');
+        this.cameraPreview = document.getElementById('cameraPreview');
+        this.startCameraBtn = document.getElementById('startCameraBtn');
+        this.stopCameraBtn = document.getElementById('stopCameraBtn');
+        this.takePhotoBtn = document.getElementById('takePhotoBtn');
+        this.recordVideoLiveBtn = document.getElementById('recordVideoBtnModal');
+        this.photoCanvas = document.getElementById('photoCanvas');
+        this.components = [
+            new TechnicalComponent('AG-018', 'IMG-20260206-WA0018.jpg', 'Estación de Control Master', 'Vista principal de armarios de distribución técnica con redundancia crítica.', '06/02/2026'),
+            new TechnicalComponent('AG-949', '20260210_174949.jpg', 'Diferencial CHNT RDC', 'Protección activa diferencial con sistema de reenganche inteligente.', '10/02/2026'),
+            new TechnicalComponent('AG-032', '20260210_175032.jpg', 'Nodos de Medida Trifásica', 'Centralización de telemedida en bloques de aislamiento galvánico.', '10/02/2026'),
+            new TechnicalComponent('AG-045', '20260210_175045.jpg', 'Infraestructura Superior HC', 'Conectores de alta potencia y gestión térmica de cableado.', '10/02/2026'),
+            new TechnicalComponent('AG-954', '20260210_174954.jpg', 'Matriz NB1-63 System', 'Secuencia de corte magnetotérmico para racks de servicios IT.', '10/02/2026'),
+            new TechnicalComponent('AG-039', '20260210_175039.jpg', 'Network Config Bus', 'Mangueras de alimentación XLPE y buses de comunicación.', '10/02/2026'),
+            new TechnicalComponent('AG-004', '20260210_175004.jpg', 'Unidad Secundaria Aux', 'Cuadro de maniobra dedicado a sistemas de ventilación y emergencia.', '10/02/2026'),
+            new TechnicalComponent('AG-018-B', '20260210_175018.jpg', 'Puentes de Control Flex', 'Detalle de bornes de conexión rápida y puentes de bypass.', '10/02/2026'),
+            new TechnicalComponent('AG-054-X', '20260210_152054.jpg', 'Nodo Derivación Planta 4', 'Caja de registro estanca IP66 para distribución sectorial.', '10/02/2026'),
+            new TechnicalComponent('AG-316', '20260210_075316.jpg', 'Embarrado Cobre Electrolítico', 'Sistema de barras colectoras para alta intensidad (400A).', '10/02/2026')
+        ];
+
+        this.init();
+    }
+
+    init() {
+        // Initial render
+        this.render();
+        
+        // Search event with debounce-like behavior
+        this.searchInput.addEventListener('input', () => {
+            this.render();
+            this.clearSearchBtn.classList.toggle('visible', this.searchInput.value.length > 0);
+        });
+        
+        this.clearSearchBtn.addEventListener('click', () => {
+            this.searchInput.value = '';
+            this.render();
+            this.clearSearchBtn.classList.remove('visible');
+            this.searchInput.focus();
+        });
+        
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && this.modal.classList.contains('active')) {
+                this.closeDetail();
+            }
+        });
+        
+        // PDF event
+        this.pdfBtn.addEventListener('click', () => this.generatePDF());
+        
+        // Add new component events
+        this.addBtn = document.getElementById('addBtn');
+        this.addModal = document.getElementById('addModal');
+        this.closeAddModalBtn = document.getElementById('closeAddModal');
+        this.saveNewComponentBtn = document.getElementById('saveNewComponentBtn');
+        this.newImageInput = document.getElementById('newImageInput');
+        this.newImagePreview = document.getElementById('newImagePreview');
+        this.imageDropZone = document.getElementById('imageDropZone');
+        
+        this.addBtn.addEventListener('click', () => {
+            this.addModal.classList.add('active');
+            this.resetAddForm();
+        });
+        
+        this.closeAddModalBtn.addEventListener('click', () => this.closeAddModal());
+        this.addModal.addEventListener('click', (e) => { if(e.target === this.addModal) this.closeAddModal(); });
+        
+        this.imageDropZone.addEventListener('click', () => this.newImageInput.click());
+        this.newImageInput.addEventListener('change', (e) => this.handleNewImage(e));
+        
+        this.imageDropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            this.imageDropZone.classList.add('dragover');
+        });
+        
+        this.imageDropZone.addEventListener('dragleave', () => {
+            this.imageDropZone.classList.remove('dragover');
+        });
+        
+        this.imageDropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            this.imageDropZone.classList.remove('dragover');
+            if (e.dataTransfer.files.length) {
+                this.newImageInput.files = e.dataTransfer.files;
+                this.handleNewImage({ target: this.newImageInput });
+            }
+        });
+        
+        this.saveNewComponentBtn.addEventListener('click', () => this.saveNewComponent());
+
+        // Modal events
+        this.closeModalBtn.addEventListener('click', () => this.closeDetail());
+        this.modal.addEventListener('click', (e) => { if(e.target === this.modal) this.closeDetail(); });
+        this.saveDetailsBtn.addEventListener('click', () => this.saveCurrentDetails());
+        
+        // Media events
+        this.recordBtn.addEventListener('click', () => this.toggleRecording());
+        this.videoInput.addEventListener('change', (e) => this.handleVideoUpload(e));
+        
+        // Camera events
+        this.startCameraBtn.addEventListener('click', () => this.startCamera());
+        this.stopCameraBtn.addEventListener('click', () => this.stopCamera());
+        this.takePhotoBtn.addEventListener('click', () => this.takePhoto());
+        this.recordVideoLiveBtn.addEventListener('click', () => this.toggleVideoRecording());
+        
+        const recordVideoBtnAction = document.getElementById('recordVideoBtnAction');
+        if (recordVideoBtnAction) {
+            recordVideoBtnAction.addEventListener('click', async () => {
+                if (!this.activeStream) {
+                    await this.startCamera();
+                }
+                this.recordVideoLiveBtn = recordVideoBtnAction;
+                this.toggleVideoRecording();
+            });
+        }
+
+        // Hide loader
+        const hideLoader = () => {
+            setTimeout(() => {
+                if (this.loader) {
+                    this.loader.style.opacity = '0';
+                    setTimeout(() => this.loader.style.display = 'none', 1000);
+                }
+            }, 500);
+        };
+
+        if (document.readyState === 'complete') {
+            hideLoader();
+        } else {
+            window.addEventListener('load', hideLoader);
+        }
+    }
+
+    openDetail(component) {
+        this.currentComponent = component;
+        this.refreshMedia();
+        
+        this.modalTitle.innerText = component.title;
+        this.modalId.innerText = `HARDWARE REF: ${component.id}`;
+        this.modalNotes.value = component.notes;
+        this.modalStatusBadge.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 6px; color: ${component.status === 'OPTIMAL' ? 'var(--success)' : 'var(--danger)'}; font-size: 0.7rem; font-weight: 800; margin-bottom: 0.5rem; letter-spacing: 2px;">
+                <span style="display: block; width: 8px; height: 8px; border-radius: 50%; background: currentColor; box-shadow: 0 0 10px currentColor;"></span>
+                SYSTEM STATUS: ${component.status}
+            </div>
+        `;
+
+        this.modal.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+
+    refreshMedia() {
+        if (!this.currentComponent) return;
+
+        // Preserve the camera container and clear everything else
+        const camera = this.cameraContainer;
+        this.modalMedia.innerHTML = '';
+        this.modalMedia.appendChild(camera);
+
+        // Append the main media (priority to video)
+        if (this.currentComponent.videoUrl) {
+            const videoContainer = document.createElement('div');
+            videoContainer.style.cssText = 'position: relative; width: 100%; height: 100%;';
+            
+            const video = document.createElement('video');
+            video.src = this.currentComponent.videoUrl;
+            video.controls = true;
+            video.autoplay = true;
+            video.style.cssText = 'width: 100%; height: 100%; object-fit: contain;';
+            
+            const deleteBtn = document.createElement('button');
+            deleteBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>';
+            deleteBtn.style.cssText = 'position: absolute; top: 1rem; right: 1rem; background: rgba(239,68,68,0.9); border: none; border-radius: 8px; padding: 0.6rem; cursor: pointer; color: white; z-index: 10; transition: all 0.2s;';
+            deleteBtn.onmouseover = () => deleteBtn.style.background = 'var(--danger)';
+            deleteBtn.onmouseout = () => deleteBtn.style.background = 'rgba(239,68,68,0.9)';
+            deleteBtn.onclick = () => {
+                this.currentComponent.videoUrl = null;
+                this.currentComponent.save();
+                this.refreshMedia();
+            };
+            deleteBtn.title = 'Eliminar video';
+            
+            videoContainer.appendChild(video);
+            videoContainer.appendChild(deleteBtn);
+            this.modalMedia.appendChild(videoContainer);
+        } else {
+            const imgContainer = document.createElement('div');
+            imgContainer.style.cssText = 'display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; padding: 1rem; box-sizing: border-box;';
+            
+            const img = document.createElement('img');
+            img.src = this.currentComponent.file;
+            img.alt = this.currentComponent.title;
+            img.style.cssText = 'max-width: 85%; max-height: 85%; width: auto; height: auto; object-fit: contain; border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,0.6);';
+            
+            imgContainer.appendChild(img);
+            this.modalMedia.appendChild(imgContainer);
+        }
+
+        // Update the audio preview in the details section
+        this.updateAudioPreview();
+    }
+
+    closeDetail() {
+        this.modal.classList.remove('active');
+        document.body.style.overflow = '';
+        this.stopCamera();
+        this.currentComponent = null;
+        if (this.mediaRecorder && this.mediaRecorder.state === 'recording') {
+            this.mediaRecorder.stop();
+        }
+    }
+
+    closeAddModal() {
+        this.addModal.classList.remove('active');
+        this.resetAddForm();
+    }
+
+    resetAddForm() {
+        document.getElementById('newComponentTitle').value = '';
+        document.getElementById('newComponentDesc').value = '';
+        this.newImagePreview.style.display = 'none';
+        this.newImagePreview.src = '';
+        this.imageDropZone.classList.remove('has-image');
+        this.imageDropZone.querySelector('svg').style.display = 'block';
+        this.imageDropZone.querySelector('p').style.display = 'block';
+    }
+
+    handleNewImage(e) {
+        const file = e.target.files[0];
+        if (file && file.type.startsWith('image/')) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                this.newImagePreview.src = e.target.result;
+                this.newImagePreview.style.display = 'block';
+                this.imageDropZone.classList.add('has-image');
+                this.imageDropZone.querySelector('svg').style.display = 'none';
+                this.imageDropZone.querySelector('p').style.display = 'none';
+            };
+            reader.readAsDataURL(file);
+        }
+    }
+
+    saveNewComponent() {
+        const title = document.getElementById('newComponentTitle').value.trim();
+        const description = document.getElementById('newComponentDesc').value.trim();
+        const imageSrc = this.newImagePreview.src;
+        
+        if (!title) {
+            alert('Por favor, introduce un título');
+            return;
+        }
+        
+        if (!imageSrc || this.newImagePreview.style.display === 'none') {
+            alert('Por favor, selecciona una imagen');
+            return;
+        }
+        
+        const newId = 'AG-' + Math.random().toString(36).substr(2, 6).toUpperCase();
+        const timestamp = new Date().toLocaleDateString('es-ES');
+        
+        const newComponent = new TechnicalComponent(
+            newId,
+            imageSrc,
+            title,
+            description || 'Sin descripción',
+            timestamp,
+            'OPTIMAL'
+        );
+        
+        this.components.push(newComponent);
+        this.render();
+        this.closeAddModal();
+        
+        this.saveDetailsBtn.innerHTML = `<span>✓ Componente añadido</span>`;
+        setTimeout(() => {
+            this.saveDetailsBtn.innerHTML = `💾 Sync Technical Data`;
+        }, 2000);
+    }
+
+    async startCamera() {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ 
+                video: { facingMode: 'environment' },
+                audio: true 
+            });
+            this.activeStream = stream;
+            this.cameraPreview.srcObject = stream;
+            this.cameraContainer.classList.add('active');
+        } catch (err) {
+            console.error("Camera Access Error:", err);
+            alert("Unable to access camera. Please check permissions.");
+        }
+    }
+
+    stopCamera() {
+        if (this.activeStream) {
+            this.activeStream.getTracks().forEach(track => track.stop());
+            this.activeStream = null;
+        }
+        this.cameraContainer.classList.remove('active');
+    }
+
+    takePhoto() {
+        const context = this.photoCanvas.getContext('2d');
+        this.photoCanvas.width = this.cameraPreview.videoWidth;
+        this.photoCanvas.height = this.cameraPreview.videoHeight;
+        
+        context.drawImage(this.cameraPreview, 0, 0, this.photoCanvas.width, this.photoCanvas.height);
+        
+        this.currentComponent.file = this.photoCanvas.toDataURL('image/jpeg');
+        this.stopCamera();
+        this.refreshMedia();
+        this.saveCurrentDetails();
+    }
+
+    async toggleVideoRecording() {
+        if (!this.videoRecorder || this.videoRecorder.state === 'inactive') {
+            this.videoChunks = [];
+            this.videoRecorder = new MediaRecorder(this.activeStream);
+            
+            this.videoRecorder.ondataavailable = (e) => {
+                if (e.data.size > 0) this.videoChunks.push(e.data);
+            };
+
+            this.videoRecorder.onstop = () => {
+                const videoBlob = new Blob(this.videoChunks, { type: 'video/webm' });
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    this.currentComponent.videoUrl = reader.result;
+                    this.stopCamera();
+                    this.refreshMedia();
+                    this.saveCurrentDetails();
+                };
+                reader.readAsDataURL(videoBlob);
+            };
+
+            this.videoRecorder.start();
+            this.recordVideoLiveBtn.classList.add('recording');
+        } else {
+            this.videoRecorder.stop();
+            this.recordVideoLiveBtn.classList.remove('recording');
+        }
+    }
+
+    async toggleRecording() {
+        if (!this.mediaRecorder || this.mediaRecorder.state === 'inactive') {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                this.mediaRecorder = new MediaRecorder(stream);
+                this.audioChunks = [];
+
+                this.mediaRecorder.ondataavailable = (e) => {
+                    this.audioChunks.push(e.data);
+                };
+
+                this.mediaRecorder.onstop = () => {
+                    const audioBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                        this.currentComponent.audioUrl = reader.result;
+                        this.currentComponent.save();
+                        this.updateAudioPreview();
+                        this.render();
+                    };
+                    reader.readAsDataURL(audioBlob);
+                };
+
+                this.mediaRecorder.start();
+                this.recordBtn.classList.add('recording');
+            } catch (err) {
+                console.error("Audio Access Denied:", err);
+                alert("Microphone access is required for voice memos.");
+            }
+        } else {
+            this.mediaRecorder.stop();
+            this.recordBtn.classList.remove('recording');
+        }
+    }
+
+    updateAudioPreview() {
+        this.audioPreviewArea.innerHTML = '';
+        if (this.currentComponent && this.currentComponent.audioUrl) {
+            const audioContainer = document.createElement('div');
+            audioContainer.style.cssText = 'display: flex; align-items: center; gap: 0.5rem;';
+            
+            const audio = document.createElement('audio');
+            audio.src = this.currentComponent.audioUrl;
+            audio.controls = true;
+            audio.style.width = '180px';
+            audio.style.height = '35px';
+            
+            const deleteBtn = document.createElement('button');
+            deleteBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>';
+            deleteBtn.style.cssText = 'background: rgba(239,68,68,0.2); border: 1px solid var(--danger); border-radius: 6px; padding: 0.4rem; cursor: pointer; color: var(--danger); transition: all 0.2s;';
+            deleteBtn.onmouseover = () => deleteBtn.style.background = 'rgba(239,68,68,0.4)';
+            deleteBtn.onmouseout = () => deleteBtn.style.background = 'rgba(239,68,68,0.2)';
+            deleteBtn.onclick = () => {
+                this.currentComponent.audioUrl = null;
+                this.currentComponent.save();
+                this.updateAudioPreview();
+            };
+            
+            audioContainer.appendChild(audio);
+            audioContainer.appendChild(deleteBtn);
+            this.audioPreviewArea.appendChild(audioContainer);
+        }
+    }
+
+    toggleAudioFromCard(component) {
+        this.currentComponent = component;
+        
+        if (component.audioUrl) {
+            const audio = new Audio(component.audioUrl);
+            audio.play();
+        } else {
+            this.openDetail(component);
+            setTimeout(() => {
+                this.recordBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                setTimeout(() => {
+                    this.toggleRecording();
+                }, 500);
+            }, 300);
+        }
+    }
+
+    toggleVideoFromCard(component) {
+        this.currentComponent = component;
+        
+        if (component.videoUrl) {
+            const videoWindow = window.open('', '_blank');
+            videoWindow.document.write(`
+                <html>
+                <head><title>Video - ${component.title}</title></head>
+                <body style="margin:0;background:#000;display:flex;justify-content:center;align-items:center;height:100vh;">
+                    <video controls autoplay style="max-width:100%;max-height:100%;">
+                        <source src="${component.videoUrl}" type="video/webm">
+                    </video>
+                </body>
+                </html>
+            `);
+        } else {
+            this.openDetail(component);
+            setTimeout(() => {
+                this.startCameraBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 300);
+        }
+    }
+
+    async startCameraFromAction() {
+        await this.startCamera();
+        this.recordVideoLiveBtn = document.getElementById('recordVideoBtnAction');
+    }
+
+    handleVideoUpload(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                this.currentComponent.videoUrl = reader.result;
+                this.saveCurrentDetails();
+            };
+            reader.readAsDataURL(file);
+        }
+    }
+
+    saveCurrentDetails() {
+        if (!this.currentComponent) return;
+        
+        const tempDiv = document.createElement('div');
+        tempDiv.textContent = this.modalNotes.value;
+        this.currentComponent.notes = tempDiv.innerHTML;
+        this.currentComponent.save();
+        
+        this.saveDetailsBtn.innerHTML = `<span>⚡ DATA SYNCED</span>`;
+        setTimeout(() => {
+            this.saveDetailsBtn.innerHTML = `💾 Sync Technical Data`;
+        }, 2000);
+        
+        this.render(); // Update gallery view if needed
+    }
+
+    updateStats(items) {
+        const stats = items.reduce((acc, comp) => {
+            acc.total++;
+            acc[comp.status.toLowerCase()] = (acc[comp.status.toLowerCase()] || 0) + 1;
+            return acc;
+        }, { total: 0, optimal: 0, warning: 0, critical: 0 });
+
+        document.getElementById('statTotal').innerText = stats.total;
+        document.getElementById('statOptimal').innerText = stats.optimal;
+        document.getElementById('statWarning').innerText = stats.warning;
+        document.getElementById('statCritical').innerText = stats.critical;
+    }
+
+    render() {
+        const query = this.searchInput.value.toLowerCase();
+        this.gallery.innerHTML = '';
+        
+        const filtered = this.components.filter(c => 
+            c.title.toLowerCase().includes(query) || 
+            c.description.toLowerCase().includes(query) ||
+            c.id.toLowerCase().includes(query)
+        );
+
+        this.updateStats(filtered);
+
+        if (filtered.length === 0) {
+            this.gallery.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 4rem; color: var(--text-dim);">
+                <p>No components found matching "${this.searchInput.value}"</p>
+            </div>`;
+            return;
+        }
+
+        filtered.forEach((comp, idx) => {
+            const cardElement = comp.render(idx);
+            this.gallery.appendChild(cardElement);
+            VanillaTilt.init(cardElement);
+        });
+    }
+
+    async generatePDF() {
+        const { jsPDF } = window.jspdf;
+        const originalText = this.pdfBtn.innerHTML;
+        this.pdfBtn.innerHTML = `<span>⏳ Processing Report...</span>`;
+        this.pdfBtn.style.opacity = '0.7';
+        this.pdfBtn.disabled = true;
+
+        const container = document.getElementById('pdf-template');
+        container.innerHTML = `
+            <div class="pdf-header">
+                <div>
+                    <h1 style="color: #0f172a; font-size: 24px; margin: 0;">ANTIGRAVIT TECH REPORT</h1>
+                    <p style="color: #64748b; margin: 0;">Electrical Infrastructure Audit</p>
+                </div>
+                <div style="text-align: right;">
+                    <p style="margin: 0; font-weight: bold;">Date: ${new Date().toLocaleDateString()}</p>
+                    <p style="margin: 0;">Unit: ALPHA-7</p>
+                </div>
+            </div>
+        `;
+
+        this.components.forEach(comp => {
+            const notes = localStorage.getItem(`tech_${comp.id}`);
+            const notesData = notes ? JSON.parse(notes).notes : '';
+            
+            const pdfItem = document.createElement('div');
+            pdfItem.className = 'pdf-card';
+            pdfItem.innerHTML = `
+                <img src="${comp.file}" class="pdf-img">
+                <div class="pdf-info">
+                    <h2 style="margin: 0 0 10px; color: #020617;">${comp.title}</h2>
+                    <p style="color: #475569; margin-bottom: 15px;">${comp.description}</p>
+                    ${notesData ? `<p style="color: #1e293b; font-size: 11px; margin-bottom: 15px; padding: 10px; background: #f1f5f9; border-radius: 6px; border-left: 3px solid var(--primary);"><strong>Notas:</strong> ${notesData}</p>` : ''}
+                    <div style="display: flex; gap: 20px; font-size: 12px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 10px;">
+                        <span>ID: ${comp.id}</span>
+                        <span>Date: ${comp.timestamp}</span>
+                        <span>Status: ${comp.status}</span>
+                    </div>
+                </div>
+            `;
+            container.appendChild(pdfItem);
+        });
+
+        try {
+            const canvas = await html2canvas(container, {
+                scale: 2,
+                useCORS: true,
+                logging: false,
+                backgroundColor: '#ffffff'
+            });
+
+            const imgData = canvas.toDataURL('image/jpeg', 0.95);
+            const doc = new jsPDF('p', 'mm', 'a4');
+            const pageWidth = doc.internal.pageSize.getWidth();
+            const pageHeight = doc.internal.pageSize.getHeight();
+            const canvasWidth = canvas.width;
+            const canvasHeight = canvas.height;
+            const ratio = pageWidth / canvasWidth;
+            const imgHeight = canvasHeight * ratio;
+
+            let heightLeft = imgHeight;
+            let position = 0;
+
+            doc.addImage(imgData, 'JPEG', 0, position, pageWidth, imgHeight);
+            heightLeft -= pageHeight;
+
+            while (heightLeft >= 0) {
+                position = heightLeft - imgHeight;
+                doc.addPage();
+                doc.addImage(imgData, 'JPEG', 0, position, pageWidth, imgHeight);
+                heightLeft -= pageHeight;
+            }
+
+            doc.save(`Antigravit_Report_${Date.now()}.pdf`);
+        } catch (err) {
+            console.error("PDF Engineering Error:", err);
+            alert("Error generating PDF. Check console for technical logs.");
+        } finally {
+            this.pdfBtn.innerHTML = originalText;
+            this.pdfBtn.style.opacity = '1';
+            this.pdfBtn.disabled = false;
+            container.innerHTML = '';
+        }
+    }
+
+    // =============================================
+    // IndexedDB and Advanced Features
+    // =============================================
+    async initDB() {
+        this.db = await idb.openDB('AntigravitDB', 2, {
+            upgrade(db, oldVersion) {
+                if (oldVersion < 1) {
+                    db.createObjectStore('components', { keyPath: 'id' });
+                    db.createObjectStore('hierarchies');
+                    db.createObjectStore('users');
+                    db.createObjectStore('histories', { autoIncrement: true });
+                }
+                if (oldVersion < 2) {
+                    db.createObjectStore('signatures', { keyPath: 'componentId' });
+                    db.createObjectStore('annotations', { keyPath: 'componentId' });
+                }
+            }
+        });
+    }
+
+    async seedInitialData() {
+        const tx = this.db.transaction('components', 'readwrite');
+        const store = tx.objectStore('components');
+
+        const initialComponents = [
+            { id: 'INST-001', title: 'Planta Industrial Norte', description: 'Instalación principal', timestamp: '2026-01-15', status: 'OPTIMAL', parentId: null, type: 'installation' },
+            { id: 'CUADRO-101', title: 'Cuadro General de Baja Tensión CG-BT-01', description: 'Cuadro principal de distribución', timestamp: '2026-02-01', status: 'OPTIMAL', parentId: 'INST-001', type: 'panel' },
+            { id: 'CUADRO-102', title: 'Cuadro de Fuerza Motores QF-M-02', description: 'Alimentación motores planta 1', timestamp: '2026-02-03', status: 'WARNING', parentId: 'INST-001', type: 'panel' },
+            { id: 'COMP-101-A', title: 'Interruptor General 1600A', file: 'https://images.unsplash.com/photo-1581092160560-1c1e428e9d65?w=800', description: 'IG con disparo por relé', timestamp: '2026-02-10', status: 'OPTIMAL', parentId: 'CUADRO-101', checklist: [
+                { item: 'Continuidad de tierra', checked: true, severity: 'high' },
+                { item: 'Aislamiento > 1 MΩ', checked: true, severity: 'high' },
+                { item: 'Etiquetado correcto', checked: false, severity: 'medium' }
+            ]},
+            { id: 'COMP-101-B', title: 'Diferencial 300 mA Tipo A', file: 'https://images.unsplash.com/photo-1581093450021-4a7360e9a6f5?w=800', description: 'Protección diferencial general', timestamp: '2026-02-10', status: 'OPTIMAL', parentId: 'CUADRO-101' },
+            { id: 'COMP-102-C', title: 'Magnetotérmico 3x63A curva C', file: 'https://images.unsplash.com/photo-1581092162387-4c2e6a5d6b5c?w=800', description: 'Protección circuito motores', timestamp: '2026-02-12', status: 'CRITICAL', parentId: 'CUADRO-102', checklist: [
+                { item: 'Prueba de disparo magnético', checked: false, severity: 'high' },
+                { item: 'Ausencia de sobrecalentamiento', checked: false, severity: 'high' }
+            ]}
+        ];
+
+        for (const comp of initialComponents) {
+            if (!await store.get(comp.id)) {
+                await store.put(comp);
+            }
+        }
+        await tx.done;
+    }
+
+    async renderHierarchy() {
+        const container = document.getElementById('hierarchyTree');
+        if (!container) return;
+
+        const allComponents = await this.db.getAll('components');
+        const rootNodes = allComponents.filter(c => !c.parentId);
+
+        function buildTreeNode(node) {
+            const li = document.createElement('li');
+            li.innerHTML = `<strong>${node.title}</strong> <small>(${node.id}) - <span class="status-${node.status}">${node.status}</span></small>`;
+
+            const children = allComponents.filter(c => c.parentId === node.id);
+            if (children.length > 0) {
+                const ul = document.createElement('ul');
+                children.forEach(child => {
+                    ul.appendChild(buildTreeNode(child));
+                });
+                li.appendChild(ul);
+            }
+
+            li.addEventListener('click', () => {
+                const comp = allComponents.find(c => c.id === node.id);
+                if (comp) window.app.openDetail(comp);
+            });
+
+            return li;
+        }
+
+        const existingTree = container.querySelector('ul');
+        if (existingTree) existingTree.remove();
+
+        const ul = document.createElement('ul');
+        rootNodes.forEach(root => {
+            ul.appendChild(buildTreeNode(root));
+        });
+        container.appendChild(ul);
+    }
+
+    async openDetail(component) {
+        this.currentComponent = component;
+        
+        // Get latest data from DB if using IndexedDB
+        if (this.db) {
+            const dbComp = await this.db.get('components', component.id);
+            if (dbComp) {
+                component = { ...component, ...dbComp };
+                this.currentComponent = component;
+            }
+        }
+        
+        this.refreshMedia();
+        
+        this.modalTitle.innerText = component.title;
+        this.modalId.innerText = `REF: ${component.id} • ${component.timestamp}`;
+        
+        // Status select
+        const statusSelect = document.getElementById('statusSelect');
+        if (statusSelect) {
+            statusSelect.value = component.status || 'OPTIMAL';
+        }
+        
+        this.modalNotes.value = component.notes || '';
+        
+        // Checklist
+        const checklistContainer = document.getElementById('checklistItems');
+        if (checklistContainer) {
+            checklistContainer.innerHTML = '';
+            
+            const defaultChecklist = [
+                { item: 'Continuidad de protección contra contactos indirectos', checked: false, severity: 'high' },
+                { item: 'Resistencia de aislamiento ≥ 1 MΩ', checked: false, severity: 'high' },
+                { item: 'Etiquetado y rotulación correcta', checked: false, severity: 'medium' },
+                { item: 'Ausencia de sobrecalentamiento visible', checked: false, severity: 'high' },
+                { item: 'Protecciones coordinadas', checked: false, severity: 'medium' }
+            ];
+
+            const items = component.checklist?.length ? component.checklist : defaultChecklist;
+
+            items.forEach((item, index) => {
+                const div = document.createElement('div');
+                div.className = 'checklist-item';
+                div.innerHTML = `
+                    <input type="checkbox" id="chk-${index}" ${item.checked ? 'checked' : ''}>
+                    <label for="chk-${index}">${item.item}</label>
+                    <select id="sev-${index}">
+                        <option value="low" ${item.severity === 'low' ? 'selected' : ''}>Baja</option>
+                        <option value="medium" ${item.severity === 'medium' ? 'selected' : ''}>Media</option>
+                        <option value="high" ${item.severity === 'high' ? 'selected' : ''}>Alta</option>
+                    </select>
+                `;
+                checklistContainer.appendChild(div);
+            });
+        }
+        
+        // Status badge
+        this.modalStatusBadge.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 6px; color: ${component.status === 'OPTIMAL' ? 'var(--success)' : component.status === 'WARNING' ? '#f59e0b' : 'var(--danger)'}; font-size: 0.7rem; font-weight: 800; margin-bottom: 0.5rem; letter-spacing: 2px;">
+                <span style="display: block; width: 8px; height: 8px; border-radius: 50%; background: currentColor; box-shadow: 0 0 10px currentColor;"></span>
+                SYSTEM STATUS: ${component.status}
+            </div>
+        `;
+
+        // Signature
+        if (this.db) {
+            const canvas = document.getElementById('signatureCanvas');
+            if (canvas) {
+                const signaturePad = new SignaturePad(canvas, { backgroundColor: 'rgb(255,255,255)' });
+                
+                const sigStore = this.db.transaction('signatures').objectStore('signatures');
+                const savedSig = await sigStore.get(component.id);
+                if (savedSig?.dataUrl) {
+                    signaturePad.fromDataURL(savedSig.dataUrl);
+                }
+
+                const saveSigBtn = document.getElementById('saveSignature');
+                if (saveSigBtn) {
+                    saveSigBtn.onclick = async () => {
+                        if (!signaturePad.isEmpty()) {
+                            const dataUrl = signaturePad.toDataURL();
+                            await this.db.put('signatures', { componentId: component.id, dataUrl }, component.id);
+                            alert('Firma guardada');
+                        }
+                    };
+                }
+
+                const clearSigBtn = document.getElementById('clearSignature');
+                if (clearSigBtn) {
+                    clearSigBtn.onclick = () => signaturePad.clear();
+                }
+            }
+
+            // QR Code
+            const qrCanvas = document.getElementById('qrCanvas');
+            if (qrCanvas) {
+                qrCanvas.innerHTML = '';
+                QRCode.toCanvas(qrCanvas, `${window.location.origin}/?component=${component.id}`, {
+                    width: 140,
+                    height: 140,
+                    colorDark: "#000000",
+                    colorLight: "#ffffff"
+                });
+            }
+        }
+
+        this.modal.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+
+    async saveCurrentDetails() {
+        if (!this.currentComponent) return;
+
+        const component = this.currentComponent;
+
+        // Status
+        const statusSelect = document.getElementById('statusSelect');
+        if (statusSelect) {
+            component.status = statusSelect.value;
+        }
+
+        // Notes
+        component.notes = this.modalNotes.value;
+
+        // Checklist
+        const checklist = [];
+        const checklistContainer = document.getElementById('checklistItems');
+        if (checklistContainer) {
+            checklistContainer.querySelectorAll('.checklist-item').forEach(item => {
+                const checkbox = item.querySelector('input[type="checkbox"]');
+                const severity = item.querySelector('select').value;
+                const text = item.querySelector('label').textContent;
+                checklist.push({
+                    item: text,
+                    checked: checkbox.checked,
+                    severity
+                });
+            });
+            component.checklist = checklist;
+        }
+
+        // Save to IndexedDB if available
+        if (this.db) {
+            await this.db.put('components', component);
+            
+            // History
+            const historyStore = this.db.transaction('histories', 'readwrite').objectStore('histories');
+            await historyStore.add({
+                componentId: component.id,
+                date: new Date().toISOString(),
+                user: currentUser?.username || 'Anónimo',
+                action: `Actualización - Estado: ${component.status}`
+            });
+        }
+        
+        this.currentComponent.save();
+        
+        this.saveDetailsBtn.innerHTML = `<span>⚡ DATOS SINCRONIZADOS</span>`;
+        setTimeout(() => {
+            this.saveDetailsBtn.innerHTML = `💾 Sync Technical Data`;
+        }, 2000);
+        
+        this.render();
+        if (this.renderHierarchy) {
+            this.renderHierarchy();
+        }
+    }
+
+    async generatePDF() {
+        const { jsPDF } = window.jspdf;
+        const originalText = this.pdfBtn.innerHTML;
+        this.pdfBtn.innerHTML = `<span>⏳ Generando Informe...</span>`;
+        this.pdfBtn.style.opacity = '0.7';
+        this.pdfBtn.disabled = true;
+
+        const components = this.db ? await this.db.getAll('components') : this.components;
+
+        const doc = new jsPDF();
+        
+        doc.setFontSize(18);
+        doc.text("INFORME DE INSPECCIÓN ELÉCTRICA", 105, 20, { align: "center" });
+        
+        doc.setFontSize(12);
+        doc.text(`Fecha: ${new Date().toLocaleDateString('es-ES')}`, 20, 35);
+        doc.text(`Inspector: ${currentUser?.username || '—'}`, 20, 42);
+        
+        let y = 55;
+        
+        for (const comp of components) {
+            if (y > 250) {
+                doc.addPage();
+                y = 20;
+            }
+            
+            doc.setFontSize(14);
+            doc.text(comp.title, 20, y);
+            y += 8;
+            
+            doc.setFontSize(10);
+            doc.text(`ID: ${comp.id} • Estado: ${comp.status}`, 20, y);
+            y += 6;
+            
+            if (comp.description) {
+                doc.text(comp.description, 20, y, { maxWidth: 170 });
+                y += 12;
+            }
+            
+            if (comp.checklist?.length) {
+                doc.text("Checklist:", 20, y);
+                y += 6;
+                comp.checklist.forEach(item => {
+                    const mark = item.checked ? '✓' : '✗';
+                    const color = item.severity === 'high' ? [200,0,0] : [0,0,0];
+                    doc.setTextColor(...color);
+                    doc.text(`  ${mark} ${item.item} (${item.severity})`, 25, y);
+                    doc.setTextColor(0,0,0);
+                    y += 6;
+                });
+                y += 4;
+            }
+            
+            if (this.db) {
+                const sig = await this.db.get('signatures', comp.id);
+                if (sig?.dataUrl) {
+                    doc.addImage(sig.dataUrl, 'PNG', 20, y, 60, 30);
+                    y += 35;
+                }
+            }
+            
+            y += 10;
+        }
+        
+        doc.save(`Informe_Antigravit_${new Date().toISOString().slice(0,10)}.pdf`);
+        
+        this.pdfBtn.innerHTML = originalText;
+        this.pdfBtn.style.opacity = '1';
+        this.pdfBtn.disabled = false;
+    }
+}
+
+// Global variables
+let currentUser = null;
+let db = null;
+
+// Login handler
+document.addEventListener('DOMContentLoaded', async () => {
+    const loginModal = document.getElementById('loginModal');
+    const userBadge = document.getElementById('userBadge');
+    const loginBtn = document.getElementById('loginBtn');
+    const logoutBtn = document.getElementById('logoutBtn');
+    const usernameInput = document.getElementById('username');
+    const roleInput = document.getElementById('role');
+
+    // Check for existing user
+    if (localStorage.getItem('user')) {
+        currentUser = JSON.parse(localStorage.getItem('user'));
+        loginModal.classList.add('hidden');
+        if (userBadge) {
+            userBadge.style.display = 'flex';
+            document.getElementById('userName').textContent = currentUser.username;
+        }
+    }
+
+    if (loginBtn) {
+        loginBtn.addEventListener('click', () => {
+            const username = usernameInput.value.trim();
+            if (username) {
+                currentUser = { username, role: roleInput.value };
+                localStorage.setItem('user', JSON.stringify(currentUser));
+                loginModal.classList.add('hidden');
+                if (userBadge) {
+                    userBadge.style.display = 'flex';
+                    document.getElementById('userName').textContent = currentUser.username;
+                }
+                initApp();
+            }
+        });
+    }
+
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', () => {
+            document.body.style.opacity = '0';
+            document.body.style.transition = 'opacity 0.5s';
+            setTimeout(() => {
+                localStorage.removeItem('user');
+                currentUser = null;
+                location.reload();
+            }, 500);
+        });
+    }
+
+    // Instantiate app core immediately to handle UI (loader, search, etc.)
+    new AntigravitApp();
+
+    // Initialize data
+    async function initApp() {
+        if (window.app) {
+            try {
+                if (typeof idb !== 'undefined') {
+                    await window.app.initDB();
+                    await window.app.seedInitialData();
+                    window.app.components = window.app.db ? await window.app.db.getAll('components') : window.app.components;
+                }
+                await window.app.renderHierarchy();
+                window.app.render();
+            } catch (error) {
+                console.error("Initialization error:", error);
+                // Fallback to basic render
+                window.app.render();
+            }
+        }
+    }
+
+    // Start app if already logged in
+    if (currentUser) {
+        initApp();
+    }
+});
+</script>
+</body>
+</html>
